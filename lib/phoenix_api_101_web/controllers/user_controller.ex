@@ -4,20 +4,45 @@ defmodule PhoenixApi101Web.UserController do
   alias PhoenixApi101.Accounts
   alias PhoenixApi101.Accounts.User
   alias JaSerializer.Params
+  alias PhoenixApi101.Repo
+  import Ecto.Changeset
 
   action_fallback(PhoenixApi101Web.FallbackController)
 
-  def index(conn, _params) do
-    users = Accounts.list_users()
-    render(conn, "index.json-api", data: users)
+  def index(conn, params) do
+    #    users = Accounts.list_users()
+
+    page =
+      User
+      |> Repo.paginate(params)
+
+    conn
+    |> Scrivener.Headers.paginate(page)
+    |> render("index.json-api", data: page.entries)
   end
 
-  def create(conn, %{"data" => data = %{"type" => "user", "attributes" => user_params}}) do
+  def create(conn, %{"data" => _data = %{"type" => "user", "attributes" => user_params}}) do
     with {:ok, %User{} = user} <- Accounts.create_user(user_params) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", user_path(conn, :show, user))
-      |> render("show.json-api", data: user)
+
+#-------------------------------------------------------------------------      
+      case  Repo.insert( User.changeset(%User{}, user_params) ) do
+        {:ok, _changeset} -> 
+          conn
+          |> put_status(:created)
+          |> put_resp_header("location", user_path(conn, :show, user))
+          |> render("show.json-api", data: user)
+         {:error, _changeset} ->
+          conn
+          |> put_status(:Conflict)
+          |> render("create.json-api", data: user)
+
+#-------------------------------------------------------------------------
+
+#      conn
+#      |> put_status(:created)
+#      |> put_resp_header("location", user_path(conn, :show, user))
+#      |> render("show.json-api", data: user)
+      end
     end
   end
 
@@ -28,7 +53,7 @@ defmodule PhoenixApi101Web.UserController do
 
   def update(conn, %{
         "id" => id,
-        "data" => data = %{"type" => "user", "attributes" => user_params}
+        "data" => _data = %{"type" => "user", "attributes" => user_params}
       }) do
     user = Accounts.get_user!(id)
 
