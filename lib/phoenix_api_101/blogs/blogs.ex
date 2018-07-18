@@ -5,7 +5,7 @@ defmodule PhoenixApi101.Blogs do
 
   import Ecto.Query, warn: false
   alias PhoenixApi101.Repo
-
+  alias PhoenixApi101.ElasticsearchCluster
   alias PhoenixApi101.Blogs.Post
 
   @doc """
@@ -21,6 +21,14 @@ defmodule PhoenixApi101.Blogs do
     Repo.all(Post)
   end
 
+  def create_search_index(doc) do
+    try do
+      Elasticsearch.put_document(ElasticsearchCluster, doc, "posts")
+    rescue
+      e in Ecto.CastError -> Elasticsearch.put_document(ElasticsearchCluster, Blogs.create_post(doc), "posts")
+    end
+
+  end
   @doc """
   Gets a single post.
 
